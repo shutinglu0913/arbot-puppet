@@ -1,0 +1,36 @@
+{
+  "name": "ar-virtual-puppet",
+  "version": "1.0.0",
+  "description": "AR Virtual Puppet - An interactive AI robot chatbot using 8thwall and Three.js",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "AR",
+    "8thwall",
+    "Three.js",
+    "AI",
+    "ChatBot",
+    "XR"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "terser": "^5.44.1",
+    "three": "^0.158.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^1.0.1",
+    "vite": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}
