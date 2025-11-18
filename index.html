@@ -6,22 +6,31 @@
     <title>AR虚拟机器人</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        html, body { 
             width: 100%; 
-            height: 100vh; 
+            height: 100%; 
             background: #000; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
         }
-        #app { width: 100%; height: 100%; }
-        canvas { display: block; }
+        #app { width: 100%; height: 100%; display: block; }
+        canvas { display: block; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
     <div id="app"></div>
-    <!-- 8thwall XR8 Script -->
-    <script src="https://cdn.8thwall.com/web/xr8/xr8-latest.js"></script>
-    <!-- Application -->
-    <script type="module" src="./assets/index-C0RFvsx8.js"></script>
+    
+    <!-- 8thwall XR8 Script (可选) -->
+    <script async src="https://cdn.8thwall.com/web/xr8/xr8-latest.js"></script>
+    
+    <!-- 应用脚本 -->
+    <script type="module">
+        // 确保应用能加载
+        console.log('Loading AR Puppet App...');
+        import('./assets/index-C0RFvsx8.js').catch(err => {
+            console.error('Failed to load app:', err);
+            document.body.innerHTML = '<div style="color: white; padding: 20px;">Failed to load application. Please check console for details.</div>';
+        });
+    </script>
 </body>
 </html>
