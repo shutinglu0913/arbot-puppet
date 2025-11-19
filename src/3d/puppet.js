@@ -39,8 +39,10 @@ export class PuppetModel {
       // Setup animations
       this.setupAnimations();
 
-      // Play greeting animation
-      await this.playAnimation('greeting');
+      // Play greeting animation (non-blocking)
+      this.playAnimation('greeting').catch(err => {
+        console.log('[PuppetModel] Greeting animation skipped:', err.message);
+      });
 
       console.log('[PuppetModel] Puppet initialized successfully');
       this.emit('initialized');
