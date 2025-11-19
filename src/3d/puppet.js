@@ -123,14 +123,14 @@ export class PuppetModel {
 
     // 身体（圆柱体）
     const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 32);
-    const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x4CAF50 });
+    const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x00FF00 });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 0;
     group.add(body);
 
-    // 头部（立方体）
+    // 头部（立方体）- 改为绿色
     const headGeometry = new THREE.BoxGeometry(0.4, 0.5, 0.4);
-    const headMaterial = new THREE.MeshPhongMaterial({ color: 0x2196F3 });
+    const headMaterial = new THREE.MeshPhongMaterial({ color: 0x00FF00 });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 0.7;
     group.add(head);
@@ -168,7 +168,7 @@ export class PuppetModel {
 
     // 左手臂
     const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 16);
-    const armMaterial = new THREE.MeshPhongMaterial({ color: 0x4CAF50 });
+    const armMaterial = new THREE.MeshPhongMaterial({ color: 0x00FF00 });
     const leftArm = new THREE.Mesh(armGeometry, armMaterial);
     leftArm.position.set(-0.45, 0.3, 0);
     leftArm.rotation.z = Math.PI / 6;

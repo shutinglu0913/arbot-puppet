@@ -1,192 +1,177 @@
 /**
- * Conversation Engine - Manages chat logic and AI responses
- * Integrates with LLM API for generating puppet responses
- * Coordinates animations with conversation flow
+ * Conversation Engine - Manages chat state, message history, and LLM integration
  */
 
-import { Message, Session } from '../schema/index.js';
-import { API_CONFIG } from '../config/constants.js';
+import { apiClient } from '../services/apiClient.js';
 
-export class ConversationEngine {
+export default class ConversationEngine {
   constructor(config = {}) {
     this.config = {
-      apiProvider: config.apiProvider || 'openai',
-      maxHistoryLength: config.maxHistoryLength || 10,
-      systemPrompt: config.systemPrompt || this.getDefaultSystemPrompt(),
+      maxHistory: config.maxHistory || 10,
+      systemPrompt: config.systemPrompt || '你是一个友好、有帮助的AI助手。',
       ...config
     };
 
-    this.session = null;
+    this.conversationHistory = [];
     this.isProcessing = false;
     this.listeners = {};
   }
 
   /**
-   * Initialize conversation session
+   * Initialize conversation engine
    */
-  async initialize(userId = '') {
+  async initialize(userId = null) {
     try {
-      console.log('[ConversationEngine] Initializing session...');
+      console.log('[ConversationEngine] Initializing...');
+      this.conversationHistory = [];
       
-      this.session = new Session({
-        userId: userId || 'anonymous',
-        active: true
-      });
-
-      // Emit greeting message from puppet
-      const greetingMsg = new Message({
-        sender: 'puppet',
-        text: '你好！我是你的AI机器人伙伴。很高兴见到你！',
-        type: 'text'
-      });
-
-      this.session.addMessage(greetingMsg);
-      this.emit('messageReceived', greetingMsg);
-
-      console.log('[ConversationEngine] Session initialized:', this.session.sessionId);
-      this.emit('initialized');
-
-      return {
-        success: true,
-        message: 'Conversation session initialized',
-        sessionId: this.session.sessionId
-      };
+      // Verify API Key is available
+      const apiKey = this.getAPIKey();
+      if (!apiKey) {
+        console.warn('[ConversationEngine] API Key not found - using localStorage fallback');
+      }
+      
+      this.emit('ready');
+      return { success: true, message: 'Conversation engine initialized' };
     } catch (error) {
       console.error('[ConversationEngine] Initialization error:', error);
-      return {
-        success: false,
-        message: error.message,
-        error
-      };
+      return { success: false, message: error.message };
     }
   }
 
   /**
-   * Process user message and generate AI response
+   * Send user message and get AI response
    */
-  async processUserMessage(text) {
-    if (!this.session || this.isProcessing) {
-      console.warn('[ConversationEngine] Session not ready or processing');
+  async sendMessage(userMessage) {
+    if (this.isProcessing) {
+      console.warn('[ConversationEngine] Already processing a message');
       return null;
     }
 
+    if (!userMessage.trim()) {
+      console.warn('[ConversationEngine] Empty message');
+      return null;
+    }
+
+    this.isProcessing = true;
+    this.emit('processing', true);
+
     try {
-      this.isProcessing = true;
-
-      // Create and store user message
-      const userMessage = new Message({
-        sender: 'user',
-        text: text,
-        type: 'text'
+      // Add user message to history
+      this.conversationHistory.push({
+        role: 'user',
+        content: userMessage
       });
 
-      this.session.addMessage(userMessage);
-      this.emit('messageReceived', userMessage);
-      console.log('[ConversationEngine] User message added:', userMessage.id);
+      // Trim history if too long
+      if (this.conversationHistory.length > this.config.maxHistory) {
+        this.conversationHistory = this.conversationHistory.slice(-this.config.maxHistory);
+      }
 
-      // Generate AI response
-      const aiResponse = await this.generateAIResponse(text);
+      // Call OpenAI API
+      const response = await this.callOpenAIAPI();
 
-      // Create puppet message
-      const puppetMessage = new Message({
-        sender: 'puppet',
-        text: aiResponse.text || '我想不出好的回答...',
-        type: 'text',
-        metadata: {
-          animationHint: aiResponse.animationHint || 'talking'
-        }
-      });
+      // Add assistant response to history
+      if (response) {
+        this.conversationHistory.push({
+          role: 'assistant',
+          content: response
+        });
 
-      this.session.addMessage(puppetMessage);
-      this.emit('messageReceived', puppetMessage);
-      console.log('[ConversationEngine] Puppet response generated:', puppetMessage.id);
+        this.emit('messageReceived', {
+          id: `msg-${Date.now()}`,
+          sender: 'puppet',
+          text: response,
+          timestamp: Date.now(),
+          type: 'text',
+          metadata: { animationHint: 'talking' }
+        });
 
-      return puppetMessage;
+        return response;
+      }
+
+      return null;
+
     } catch (error) {
-      console.error('[ConversationEngine] Error processing message:', error);
-      this.emit('error', error);
+      console.error('[ConversationEngine] Error:', error);
+      this.emit('error', error.message);
       return null;
     } finally {
       this.isProcessing = false;
+      this.emit('processing', false);
     }
   }
 
   /**
-   * Generate AI response using LLM API
+   * Call OpenAI API with retry logic
    */
-  async generateAIResponse(userText) {
-    try {
-      const conversationContext = this.session.getConversationContext(this.config.maxHistoryLength);
-      
-      // Format messages for API
-      const messages = conversationContext.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.text
-      }));
-
-      // Call LLM API
-      const response = await this.callLLMAPI({
-        messages,
-        systemPrompt: this.config.systemPrompt
-      });
-
-      console.log(`[ConversationEngine] API returned text length: ${response.text.length} chars`);
-      console.log(`[ConversationEngine] API response: "${response.text}"`);
-
-      return {
-        text: response.text || '',
-        animationHint: response.animationHint || 'talking'
-      };
-    } catch (error) {
-      console.error('[ConversationEngine] Error generating response:', error);
-      
-      // Return fallback response
-      return {
-        text: '抱歉，我现在有点困惑。请再说一遍？',
-        animationHint: 'confused'
-      };
+  async callOpenAIAPI() {
+    const apiKey = this.getAPIKey();
+    if (!apiKey) {
+      throw new Error('API Key not found. Please set VITE_LLM_API_KEY or use localStorage.');
     }
-  }
 
-  /**
-   * Call LLM API with retry logic
-   */
-  async callLLMAPI(payload) {
     const maxRetries = 3;
-    let lastError;
+    let lastError = null;
+    
+    // 使用代理 URL（开发环境）或直接调用（生产环境）
+    const isDev = import.meta.env.DEV;
+    const apiUrl = isDev 
+      ? '/api/openai/chat/completions'  // 本地代理
+      : 'https://api.openai.com/v1/chat/completions';  // 生产环境
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // 从环境变量或 localStorage 获取API密钥
-        let apiKey = import.meta.env.VITE_LLM_API_KEY;
-        
-        // 如果环境变量中没有，从 localStorage 读取
-        if (!apiKey && typeof localStorage !== 'undefined') {
-          apiKey = localStorage.getItem('VITE_LLM_API_KEY');
-        }
-        
-        if (!apiKey) {
-          throw new Error('LLM API key not configured. Please set VITE_LLM_API_KEY.');
+        console.log(`[ConversationEngine] API Request attempt ${attempt}/${maxRetries}`);
+        console.log(`[ConversationEngine] Using API URL: ${isDev ? 'proxy' : 'direct'}`);
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              {
+                role: 'system',
+                content: this.config.systemPrompt
+              },
+              ...this.conversationHistory
+            ],
+            max_tokens: 1000,
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error?.message || 
+            `HTTP ${response.status}: ${response.statusText}`
+          );
         }
 
-        // Determine which API to call based on provider
-        let response;
-        if (this.config.apiProvider === 'openai') {
-          response = await this.callOpenAI(payload, apiKey);
-        } else if (this.config.apiProvider === 'claude') {
-          response = await this.callClaude(payload, apiKey);
-        } else {
-          throw new Error(`Unknown API provider: ${this.config.apiProvider}`);
+        const data = await response.json();
+
+        if (!data.choices || !data.choices[0]) {
+          throw new Error('Invalid API response: missing choices');
         }
 
-        return response;
+        const assistantMessage = data.choices[0].message.content;
+        console.log('[ConversationEngine] Response received:', assistantMessage.substring(0, 50) + '...');
+
+        return assistantMessage;
+
       } catch (error) {
         lastError = error;
-        console.warn(`[ConversationEngine] API call attempt ${attempt} failed:`, error.message);
-        
+        console.warn(`[ConversationEngine] Attempt ${attempt} failed:`, error.message);
+
         if (attempt < maxRetries) {
           // Exponential backoff
           const delay = Math.pow(2, attempt - 1) * 1000;
+          console.log(`[ConversationEngine] Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -196,125 +181,33 @@ export class ConversationEngine {
   }
 
   /**
-   * Call OpenAI API
+   * Get API Key from environment or localStorage
    */
-  async callOpenAI(payload, apiKey) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: payload.systemPrompt },
-          ...payload.messages
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      })
-    });
+  getAPIKey() {
+    // Try environment variable first
+    const envKey = import.meta.env.VITE_LLM_API_KEY;
+    if (envKey) return envKey;
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
+    // Try localStorage
+    const storedKey = localStorage.getItem('openai_api_key');
+    if (storedKey) return storedKey;
 
-    const data = await response.json();
-    const text = data.choices[0]?.message?.content || '';
-
-    console.log(`[callOpenAI] Raw response length: ${text.length} chars`);
-
-    return {
-      text: text.trim(),
-      animationHint: this.selectAnimationHint(text)
-    };
-  }
-
-  /**
-   * Call Claude API
-   */
-  async callClaude(payload, apiKey) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 1000,
-        system: payload.systemPrompt,
-        messages: payload.messages
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const text = data.content[0]?.text || '';
-
-    console.log(`[callClaude] Raw response length: ${text.length} chars`);
-
-    return {
-      text: text.trim(),
-      animationHint: this.selectAnimationHint(text)
-    };
-  }
-
-  /**
-   * Select animation hint based on response content
-   */
-  selectAnimationHint(text) {
-    if (text.includes('？') || text.includes('?')) {
-      return 'confused';
-    }
-    if (text.includes('！') || text.includes('!')) {
-      return 'happy';
-    }
-    return 'talking';
-  }
-
-  /**
-   * Get default system prompt for puppet personality
-   */
-  getDefaultSystemPrompt() {
-    return `你是一个友好的AI机器人助手。你的名字是"小AI"。
-你应该：
-- 用详细、友好的方式回答问题
-- 根据问题需要提供完整的回答，可以是多段落
-- 尽量让对话有趣和互动
-- 使用适当的表情符号`;
+    return null;
   }
 
   /**
    * Get conversation history
    */
-  getConversationHistory() {
-    return this.session ? this.session.conversationHistory : [];
+  getHistory() {
+    return [...this.conversationHistory];
   }
 
   /**
    * Clear conversation history
    */
   clearHistory() {
-    if (this.session) {
-      this.session.conversationHistory = [];
-    }
-  }
-
-  /**
-   * End session
-   */
-  endSession() {
-    if (this.session) {
-      this.session.endSession();
-      console.log('[ConversationEngine] Session ended');
-      this.emit('sessionEnded');
-    }
+    this.conversationHistory = [];
+    this.emit('history-cleared');
   }
 
   /**
@@ -328,29 +221,19 @@ export class ConversationEngine {
   }
 
   off(event, callback) {
-    if (this.listeners[event]) {
-      this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
-    }
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
   }
 
   emit(event, data) {
-    if (this.listeners[event]) {
-      this.listeners[event].forEach(callback => {
-        try {
-          callback(data);
-        } catch (error) {
-          console.error(`[ConversationEngine] Error in event listener for '${event}':`, error);
-        }
-      });
-    }
+    if (!this.listeners[event]) return;
+    this.listeners[event].forEach(callback => callback(data));
   }
 
   /**
-   * Get session info
+   * Cleanup
    */
-  getSessionInfo() {
-    return this.session ? this.session.toJSON() : null;
+  dispose() {
+    this.listeners = {};
   }
 }
-
-export default ConversationEngine;

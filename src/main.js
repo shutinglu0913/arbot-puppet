@@ -280,11 +280,20 @@ class ARPuppetApp {
       return;
     }
 
+    // 立即显示用户消息
+    this.uiManager.addMessage({
+      id: `msg-${Date.now()}`,
+      sender: 'user',
+      text: text,
+      timestamp: Date.now(),
+      type: 'text'
+    });
+
     this.uiManager.setInputEnabled(false);
     this.updateStatus('处理中...', 'info');
 
     try {
-      const response = await this.conversationEngine.processUserMessage(text);
+      const response = await this.conversationEngine.sendMessage(text);
 
       if (!response) {
         this.updateStatus('消息处理失败', 'error');

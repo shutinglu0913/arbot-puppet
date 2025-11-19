@@ -28,7 +28,7 @@ export const XRWALL_CONFIG = {
 
 // 3D Scene Configuration
 export const SCENE_CONFIG = {
-  backgroundColor: 0x1a1a1a,
+  backgroundColor: 0x87ceeb,
   cameraFOV: 75,
   cameraNear: 0.1,
   cameraFar: 1000,
