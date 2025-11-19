@@ -45,14 +45,9 @@ class ARPuppetApp {
       await this.initializeUI();
       this.updateStatus('初始化AR会话...', 'info');
 
-      // 2. Initialize AR Camera
+      // 2. Initialize AR Camera (disabled)
       await this.initializeARCamera();
-      
-      if (this.arCameraAvailable) {
-        this.updateStatus('AR相机已启用，加载3D模型...', 'info');
-      } else {
-        this.updateStatus('使用普通模式，加载3D模型...', 'info');
-      }
+      this.updateStatus('加载3D模型...', 'info');
 
       // 3. Initialize Three.js Scene
       this.initializeScene();
@@ -109,6 +104,21 @@ class ARPuppetApp {
    * Initialize AR Camera
    */
   async initializeARCamera() {
+    // 暂时禁用AR相机功能，直接使用普通模式
+    console.log('[ARPuppetApp] AR Camera disabled, using standard mode');
+    this.arCameraAvailable = false;
+    
+    // 创建一个简单的占位对象
+    this.arCamera = {
+      on: () => {},
+      pause: () => {},
+      resume: () => {},
+      dispose: () => Promise.resolve()
+    };
+    
+    return;
+    
+    /* AR相机代码已禁用
     this.arCamera = new ARCamera();
 
     const result = await this.arCamera.initialize();
@@ -129,6 +139,7 @@ class ARPuppetApp {
       console.error('[ARPuppetApp] AR Camera error:', error);
       this.disableARBackground();
     });
+    */
   }
 
   /**
