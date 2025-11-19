@@ -1,27 +1,13 @@
-import { defineConfig } from 'vite'
-import basicSsl from '@vitejs/plugin-basic-ssl'
+import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [basicSsl()],
+  base: '/arbot-puppet/',
   server: {
-    port: 5173,
-    https: true,
-    open: true,
-    proxy: {
-      '/api/openai': {
-        target: 'https://api.openai.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/openai/, '/v1'),
-      }
-    }
+    host: '0.0.0.0',
+    port: 5173
   },
   build: {
     outDir: 'dist',
-    sourcemap: false,
-    minify: 'terser',
-  },
-  define: {
-    'import.meta.env.DEV': process.env.NODE_ENV === 'development',
-    'import.meta.env.PROD': process.env.NODE_ENV === 'production',
+    sourcemap: true
   }
-})
+});
