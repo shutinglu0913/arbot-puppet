@@ -11,7 +11,7 @@ export class PuppetModel {
   constructor(config = {}) {
     this.config = {
       modelUrl: config.modelUrl || '/models/puppet.gltf',
-      position: config.position || { x: 0, y: -0.5, z: -2 },
+      position: config.position || { x: 0, y: 0, z: -2 },
       scale: config.scale || 1,
       ...config
     };
@@ -195,6 +195,8 @@ export class PuppetModel {
     this.scene.add(this.model);
 
     console.log('[PuppetModel] Simple 3D model created as placeholder');
+    console.log('[PuppetModel] Model position:', this.model.position);
+    console.log('[PuppetModel] Model added to scene. Scene children:', this.scene.children.length);
   }
 
   /**
@@ -229,9 +231,14 @@ export class PuppetModel {
       onComplete = null
     } = options;
 
-    if (!this.mixer || !this.model) {
-      console.warn('[PuppetModel] Cannot play animation: mixer or model not ready');
-      return false;
+    if (!this.model) {
+      console.warn('[PuppetModel] Cannot play animation: model not ready');
+      return Promise.resolve(false);
+    }
+
+    if (!this.mixer) {
+      console.warn('[PuppetModel] No animation mixer available (simple model)');
+      return Promise.resolve(false);
     }
 
     try {
