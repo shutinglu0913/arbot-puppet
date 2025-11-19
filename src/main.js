@@ -43,18 +43,18 @@ class ARPuppetApp {
 
       // 1. Initialize UI (show progress)
       await this.initializeUI();
-      this.updateStatus('初始化AR会话...', 'info');
+      this.updateStatus('Initializing AR session...', 'info');
 
       // 2. Initialize AR Camera (disabled)
       await this.initializeARCamera();
-      this.updateStatus('加载3D模型...', 'info');
+      this.updateStatus('Loading 3D model...', 'info');
 
       // 3. Initialize Three.js Scene
       this.initializeScene();
 
       // 4. Load Puppet Model
       await this.initializePuppet();
-      this.updateStatus('初始化对话引擎...', 'info');
+      this.updateStatus('Initializing conversation...', 'info');
 
       // 5. Initialize Conversation Engine
       await this.initializeConversation();
@@ -63,14 +63,14 @@ class ARPuppetApp {
       this.setupEventListeners();
       this.startRenderLoop();
 
-      this.updateStatus('已准备就绪 ✓', 'success');
+      this.updateStatus('Ready ✓', 'success');
       globalState.setState({ arSessionActive: true });
 
       this.log('Initialization complete!');
       return true;
     } catch (error) {
       console.error('[ARPuppetApp] Initialization failed:', error);
-      this.updateStatus(`初始化失败: ${error.message}`, 'error');
+      this.updateStatus(`Initialization failed: ${error.message}`, 'error');
       return false;
     }
   }
@@ -266,7 +266,7 @@ class ARPuppetApp {
 
     this.conversationEngine.on('error', (error) => {
       console.error('[ARPuppetApp] Conversation error:', error);
-      this.updateStatus('对话发生错误', 'error');
+      this.updateStatus('Conversation error', 'error');
     });
 
     globalState.setState({ conversationActive: true });
@@ -314,19 +314,19 @@ class ARPuppetApp {
     });
 
     this.uiManager.setInputEnabled(false);
-    this.updateStatus('处理中...', 'info');
+    this.updateStatus('Processing...', 'info');
 
     try {
       const response = await this.conversationEngine.sendMessage(text);
 
       if (!response) {
-        this.updateStatus('消息处理失败', 'error');
+        this.updateStatus('Message failed', 'error');
       } else {
-        this.updateStatus('已准备就绪', 'success');
+        this.updateStatus('Ready', 'success');
       }
     } catch (error) {
       console.error('[ARPuppetApp] Error processing message:', error);
-      this.updateStatus('发生错误', 'error');
+      this.updateStatus('Error occurred', 'error');
     } finally {
       this.uiManager.setInputEnabled(true);
     }
@@ -385,7 +385,7 @@ class ARPuppetApp {
     // 添加视频背景
     this.createVideoBackground();
     
-    this.updateStatus('AR模式已启用 📷', 'success');
+    this.updateStatus('AR mode enabled 📷', 'success');
   }
 
   /**

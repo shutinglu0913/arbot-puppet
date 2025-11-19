@@ -208,15 +208,24 @@
         }
 
         .last-sent-message {
+            position: fixed;
+            bottom: 70px;
+            left: 0;
+            right: 0;
+            width: calc(100% - 32px);
+            max-width: 600px;
+            margin: 0 auto;
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 12px;
-            margin-bottom: 8px;
-            background: rgba(102, 126, 234, 0.1);
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
             font-size: 13px;
             border-left: 3px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 89;
         }
 
         .last-sent-label {
@@ -569,14 +578,14 @@
             <div id="chat-history" class="chat-history"></div>
         </div>
 
+        <!-- Last sent message display (above input area) -->
+        <div id="last-sent-message" class="last-sent-message" style="display: none;">
+            <span class="last-sent-label">Last sent:</span>
+            <span id="last-sent-text" class="last-sent-text"></span>
+        </div>
+
         <!-- Input Area (Fixed at bottom) -->
         <div class="input-area input-area-bottom">
-            <!-- Last sent message display -->
-            <div id="last-sent-message" class="last-sent-message" style="display: none;">
-                <span class="last-sent-label">上一条：</span>
-                <span id="last-sent-text" class="last-sent-text"></span>
-            </div>
-            
             <input 
                 id="message-input" 
                 class="message-input" 
