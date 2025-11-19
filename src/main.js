@@ -28,6 +28,8 @@ class ARPuppetApp {
     this.camera = null;
     this.renderer = null;
     this.animationFrameId = null;
+    this.arCameraAvailable = false;
+    this.videoBackground = null;
 
     this.log('Initializing AR Puppet App...');
   }
@@ -45,7 +47,12 @@ class ARPuppetApp {
 
       // 2. Initialize AR Camera
       await this.initializeARCamera();
-      this.updateStatus('加载3D模型...', 'info');
+      
+      if (this.arCameraAvailable) {
+        this.updateStatus('AR相机已启用，加载3D模型...', 'info');
+      } else {
+        this.updateStatus('使用普通模式，加载3D模型...', 'info');
+      }
 
       // 3. Initialize Three.js Scene
       this.initializeScene();
@@ -106,15 +113,21 @@ class ARPuppetApp {
 
     const result = await this.arCamera.initialize();
     if (!result.success) {
-      throw new Error(`AR Camera initialization failed: ${result.message}`);
+      console.warn('[ARPuppetApp] AR Camera initialization failed, using fallback mode');
+      this.arCameraAvailable = false;
+      return;
     }
+
+    this.arCameraAvailable = true;
 
     this.arCamera.on('initialized', () => {
       this.log('AR Camera initialized');
+      this.enableARBackground();
     });
 
     this.arCamera.on('error', (error) => {
       console.error('[ARPuppetApp] AR Camera error:', error);
+      this.disableARBackground();
     });
   }
 
@@ -346,6 +359,75 @@ class ARPuppetApp {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+  }
+
+  /**
+   * Enable AR background (transparent to show camera)
+   */
+  enableARBackground() {
+    if (!this.scene || !this.renderer) return;
+    
+    console.log('[ARPuppetApp] Enabling AR background');
+    this.scene.background = null; // 透明背景
+    this.renderer.setClearColor(0x000000, 0); // 完全透明
+    
+    // 添加视频背景
+    this.createVideoBackground();
+    
+    this.updateStatus('AR模式已启用 📷', 'success');
+  }
+
+  /**
+   * Disable AR background (use sky blue)
+   */
+  disableARBackground() {
+    if (!this.scene || !this.renderer) return;
+    
+    console.log('[ARPuppetApp] Disabling AR background, using fallback');
+    this.scene.background = new THREE.Color(SCENE_CONFIG.backgroundColor);
+    this.renderer.setClearColor(SCENE_CONFIG.backgroundColor, 1);
+    
+    // 移除视频背景
+    if (this.videoBackground) {
+      this.scene.remove(this.videoBackground);
+      this.videoBackground = null;
+    }
+  }
+
+  /**
+   * Create video background from camera stream
+   */
+  async createVideoBackground() {
+    try {
+      // 尝试获取摄像头流
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' },
+        audio: false 
+      });
+      
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+      
+      const videoTexture = new THREE.VideoTexture(video);
+      videoTexture.minFilter = THREE.LinearFilter;
+      videoTexture.magFilter = THREE.LinearFilter;
+      
+      const videoMaterial = new THREE.MeshBasicMaterial({ 
+        map: videoTexture,
+        side: THREE.DoubleSide
+      });
+      
+      const videoGeometry = new THREE.PlaneGeometry(16, 9);
+      this.videoBackground = new THREE.Mesh(videoGeometry, videoMaterial);
+      this.videoBackground.position.z = -5;
+      this.scene.add(this.videoBackground);
+      
+      console.log('[ARPuppetApp] Video background created');
+    } catch (error) {
+      console.warn('[ARPuppetApp] Failed to create video background:', error.message);
+      this.disableARBackground();
+    }
   }
 
   /**
