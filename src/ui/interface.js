@@ -25,6 +25,9 @@ export class UIManager {
     this.listeners = {};
     this.isListening = false;
     this.dialogueTimeout = null;
+    this.lastSentMessage = null;
+    this.lastSentMessageElement = null;
+    this.lastSentTextElement = null;
   }
 
   /**
@@ -46,6 +49,8 @@ export class UIManager {
       this.chatContainer = document.getElementById('chat-container');
       this.chatCloseBtn = document.getElementById('chat-close-btn');
       this.robotDialogue = document.getElementById('robot-dialogue');
+      this.lastSentMessageElement = document.getElementById('last-sent-message');
+      this.lastSentTextElement = document.getElementById('last-sent-text');
 
       // Attach event listeners
       this.attachEventListeners();
@@ -81,6 +86,7 @@ export class UIManager {
       this.sendButton.addEventListener('click', () => {
         const text = this.getMessageInput();
         if (text.trim()) {
+          this.updateLastSentMessage(text);
           this.emit('sendMessage', text);
           this.clearMessageInput();
         }
@@ -93,6 +99,7 @@ export class UIManager {
         if (e.key === 'Enter') {
           const text = this.getMessageInput();
           if (text.trim()) {
+            this.updateLastSentMessage(text);
             this.emit('sendMessage', text);
             this.clearMessageInput();
           }
@@ -303,6 +310,21 @@ export class UIManager {
   clearChatHistory() {
     if (this.chatHistory) {
       this.chatHistory.innerHTML = '';
+    }
+  }
+
+  /**
+   * Update last sent message display
+   */
+  updateLastSentMessage(text) {
+    this.lastSentMessage = text;
+    
+    if (this.lastSentTextElement) {
+      this.lastSentTextElement.textContent = text;
+    }
+    
+    if (this.lastSentMessageElement) {
+      this.lastSentMessageElement.style.display = 'flex';
     }
   }
 
